@@ -41,6 +41,13 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
     ScriptedLoadableModuleWidget.setup(self)
     self.logic = WebSocketLogic(self)
 
+    # Websocket
+    self.host = "localhost"
+    self.port = 8180
+    self.socket = None
+
+
+
     # Instantiate and connect widgets ...
     #
     # Parameters Area
@@ -62,8 +69,8 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
     #
     # Disconnect Button
     #
-    # self.disconnectButton = qt.QPushButton("Disconnect")
-    # parametersFormLayout.addRow(self.disconnectButton)
+    self.disconnectButton = qt.QPushButton("Disconnect")
+    parametersFormLayout.addRow(self.disconnectButton)
 
     #
     # Python Console
@@ -75,72 +82,95 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
 
     # connections
     self.connectButton.connect('clicked(bool)', self.onConnectButton)
-    # self.disconnectButton.connect('clicked(bool)', self.onDisconnectButton)
+    self.disconnectButton.connect('clicked(bool)', self.onDisconnectButton)
     # self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     # self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
+
+    self.socket = qt.QTcpSocket()
+    self.socket.connect('connected()', self.on_connect)
+    self.socket.connect('disconnected()', self.on_disconnect)
+    self.socket.connect("error( ::QAbstractSocket::SocketError)", self.on_error)
+    self.socket.connect('hostFound()', self.on_hostFound)
+    self.socket.connect('stateChanged( ::QAbstractSocket::SocketState)',self.on_state_changed)
+    self.socket.connect('readyRead()', self.handleRead)
 
     # Add vertical spacer
     self.layout.addStretch(1)
 
 
   def onConnectButton(self):
-      import thread
-      thread.start_new_thread(self.logic.runSocket, ())
+      self.socket.connectToHost(self.host,self.port)
 
   def onDisconnectButton(self):
-    pass
+      self.socket.abort()
+      self.socket.close()
+
+  def on_connect(self):
+      self.pythonConsole.append('[Connected]\n')
+      print('[Connected]')
+      print self.socket.ConnectedState
+
+  def on_hostFound(self):
+      self.pythonConsole.append('[Host found]\n')
+      print('[Host found]')
+
+  def on_state_changed(self):
+      self.pythonConsole.append('[State changed]\n')
+      print('[State changed]')
+
+  def handleRead(self):
+      while self.socket.canReadLine():
+          m = str(self.socket.readLine()).split()
+          print m
+
+  def on_error(self):
+      self.pythonConsole.append('[Error]\n')
+      print('[Error]')
+      print self.socket.error()
+
+  def on_disconnect(self):
+      self.pythonConsole.append('[Disconnected]\n')
+      print('[Disconnected]')
+
 #
 # WebSocketLogic
 #
 
 class WebSocketLogic(ScriptedLoadableModuleLogic):
-    def runSocket(self):
-        self.socketIO = SocketIO('localhost:8180/suscribe', 8180, Namespace)
-        self.socketIO.wait()
+    def run(self):
+        pass
+    # def runSocket(self):
+    #     self.socketIO = SocketIO('localhost:8180/suscribe', 8180, Namespace)
+    #     self.socketIO.wait()
 
-class Namespace(BaseNamespace):
-    def on_connect(self):
-        self.ui = slicer.modules.WebSocketWidget
-        self.lock = threading.Lock()
-
-        self.lock.acquire()
-        self.ui.pythonConsole.append('[Connected]\n')
-        print('[Connected]')
-        self.lock.release()
-
-    def on_reconnect(self):
-        self.lock.acquire()
-        self.ui.pythonConsole.append('[Reconnected]\n')
-        print('[Reconnected]')
-        self.lock.release()
-
-    def on_connected(self, args):
-        self.lock.acquire()
-        self.ui.pythonConsole.append('connected')
-        self.ui.pythonConsole.append(args)
-        print('connected', args)
-        self.lock.release()
-        self.emit('emit_with_callback', self.callback)
-
-    def callback(self, *args):
-        self.lock.acquire()
-        self.ui.pythonConsole.append(args)
-        print(args)
-        self.lock.release()
-
-    def on_disconnect(self):
-        self.lock.acquire()
-        self.ui.pythonConsole.append('[Disconnected]')
-        print('[Disconnected]')
-        self.lock.release()
-
-    def on_execute_task(self, *args):
-        self.lock.acquire()
-        self.ui.pythonConsole.append('executing task')
-        self.ui.pythonConsole.append(args)
-        print('executing task', args)
-        self.lock.release()
-
+# class Namespace(BaseNamespace):
+#     def on_connect(self):
+#         self.ui = slicer.modules.WebSocketWidget
+#         self.ui.pythonConsole.append('[Connected]\n')
+#         print('[Connected]')
+#
+#     def on_reconnect(self):
+#         self.ui.pythonConsole.append('[Reconnected]\n')
+#         print('[Reconnected]')
+#
+#     def on_connected(self, args):
+#         self.ui.pythonConsole.append('connected')
+#         self.ui.pythonConsole.append(args)
+#         print('connected', args)
+#         self.emit('emit_with_callback', self.callback)
+#
+#     def callback(self, *args):
+#         self.ui.pythonConsole.append(args)
+#         print(args)
+#
+#     def on_disconnect(self):
+#         self.ui.pythonConsole.append('[Disconnected]')
+#         print('[Disconnected]')
+#
+#     def on_execute_task(self, *args):
+#         self.ui.pythonConsole.append('executing task')
+#         self.ui.pythonConsole.append(args)
+#         print('executing task', args)
 
 class WebSocketTest(ScriptedLoadableModuleTest):
   """
