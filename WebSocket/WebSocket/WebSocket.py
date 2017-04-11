@@ -109,6 +109,7 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
       self.pythonConsole.append('[Connected]\n')
       print('[Connected]')
       print self.socket.ConnectedState
+      print self.socket.write('emit_with_callback')
 
   def on_hostFound(self):
       self.pythonConsole.append('[Host found]\n')
