@@ -76,8 +76,6 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
     # Python Console
     #
     self.pythonConsole = qt.QTextEdit()
-    # self.textEdit.setGeometry(QtCore.QRect(10, 300,
-    # > self.textEdit.setObjectName(_fromUtf8("textEdit"))
     parametersFormLayout.addRow(self.pythonConsole)
 
     # connections
@@ -86,13 +84,21 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
     # self.inputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
     # self.outputSelector.connect("currentNodeChanged(vtkMRMLNode*)", self.onSelect)
 
+    # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    # =-=-=-=-=-=-=-=-=-= QT SOCKET =-=-=-=-=-=-=-=-=-=
+    # =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+    # Doc: http://pyqt.sourceforge.net/Docs/PyQt4/qabstractsocket.html
+
     self.socket = qt.QTcpSocket()
     self.socket.connect('connected()', self.on_connect)
     self.socket.connect('disconnected()', self.on_disconnect)
-    self.socket.connect("error( ::QAbstractSocket::SocketError)", self.on_error)
     self.socket.connect('hostFound()', self.on_hostFound)
-    self.socket.connect('stateChanged( ::QAbstractSocket::SocketState)',self.on_state_changed)
+
+    # Need to be fixed
+    self.socket.connect("error( ::QAbstractSocket::SocketError)", self.on_error)
+    self.socket.connect('stateChanged( ::QAbstractSocket::SocketState)', self.on_state_changed)
     self.socket.connect('readyRead()', self.handleRead)
+    self.socket.connect('bytesWritten()', self.on_written)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -109,7 +115,9 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
       self.pythonConsole.append('[Connected]\n')
       print('[Connected]')
       print self.socket.ConnectedState
-      print self.socket.write('emit_with_callback')
+      if self.socket.isValid():
+        print self.socket.write('connected')
+        # Generating error "[log,connection,client,error] message: Parse Error, stack: Error: Parse Error at Error (native)"
 
   def on_hostFound(self):
       self.pythonConsole.append('[Host found]\n')
@@ -124,6 +132,9 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
           m = str(self.socket.readLine()).split()
           print m
 
+  def on_written(self):
+      print "Something written"
+
   def on_error(self):
       self.pythonConsole.append('[Error]\n')
       print('[Error]')
@@ -132,7 +143,7 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
   def on_disconnect(self):
       self.pythonConsole.append('[Disconnected]\n')
       print('[Disconnected]')
-
+      print self.socket.error()
 #
 # WebSocketLogic
 #
@@ -140,38 +151,6 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
 class WebSocketLogic(ScriptedLoadableModuleLogic):
     def run(self):
         pass
-    # def runSocket(self):
-    #     self.socketIO = SocketIO('localhost:8180/suscribe', 8180, Namespace)
-    #     self.socketIO.wait()
-
-# class Namespace(BaseNamespace):
-#     def on_connect(self):
-#         self.ui = slicer.modules.WebSocketWidget
-#         self.ui.pythonConsole.append('[Connected]\n')
-#         print('[Connected]')
-#
-#     def on_reconnect(self):
-#         self.ui.pythonConsole.append('[Reconnected]\n')
-#         print('[Reconnected]')
-#
-#     def on_connected(self, args):
-#         self.ui.pythonConsole.append('connected')
-#         self.ui.pythonConsole.append(args)
-#         print('connected', args)
-#         self.emit('emit_with_callback', self.callback)
-#
-#     def callback(self, *args):
-#         self.ui.pythonConsole.append(args)
-#         print(args)
-#
-#     def on_disconnect(self):
-#         self.ui.pythonConsole.append('[Disconnected]')
-#         print('[Disconnected]')
-#
-#     def on_execute_task(self, *args):
-#         self.ui.pythonConsole.append('executing task')
-#         self.ui.pythonConsole.append(args)
-#         print('executing task', args)
 
 class WebSocketTest(ScriptedLoadableModuleTest):
   """
