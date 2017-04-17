@@ -76,6 +76,7 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
     # Python Console
     #
     self.pythonConsole = qt.QTextEdit()
+    self.pythonConsole.readOnly = True
     parametersFormLayout.addRow(self.pythonConsole)
 
     # connections
@@ -93,12 +94,11 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
     self.socket.connect('connected()', self.on_connect)
     self.socket.connect('disconnected()', self.on_disconnect)
     self.socket.connect('hostFound()', self.on_hostFound)
+    self.socket.connect('readyRead()', self.handleRead)
 
     # Need to be fixed
     self.socket.connect("error( ::QAbstractSocket::SocketError)", self.on_error)
-    self.socket.connect('stateChanged( ::QAbstractSocket::SocketState)', self.on_state_changed)
-    self.socket.connect('readyRead()', self.handleRead)
-    self.socket.connect('bytesWritten()', self.on_written)
+    # self.socket.connect('bytesWritten()', self.on_written)
 
     # Add vertical spacer
     self.layout.addStretch(1)
@@ -112,28 +112,22 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
       self.socket.close()
 
   def on_connect(self):
-      self.pythonConsole.append('[Connected]\n')
-      print('[Connected]')
-      print self.socket.ConnectedState
+      self.pythonConsole.append('[Connected]')
       if self.socket.isValid():
-        print self.socket.write('connected')
-        # Generating error "[log,connection,client,error] message: Parse Error, stack: Error: Parse Error at Error (native)"
+          self.socket.write('Hello')
 
   def on_hostFound(self):
-      self.pythonConsole.append('[Host found]\n')
-      print('[Host found]')
-
-  def on_state_changed(self):
-      self.pythonConsole.append('[State changed]\n')
-      print('[State changed]')
+      self.pythonConsole.append('[Host found]')
 
   def handleRead(self):
       while self.socket.canReadLine():
-          m = str(self.socket.readLine()).split()
-          print m
+          m = str(self.socket.readLine()).rstrip('\r\n')
+          self.pythonConsole.append('> ' + m)
+          if m == "connected":
+              self.socket.write('emit_with_callback')
 
-  def on_written(self):
-      print "Something written"
+  # def on_written(self):
+  #     print "Something written"
 
   def on_error(self):
       self.pythonConsole.append('[Error]\n')
@@ -141,9 +135,8 @@ class WebSocketWidget(ScriptedLoadableModuleWidget):
       print self.socket.error()
 
   def on_disconnect(self):
-      self.pythonConsole.append('[Disconnected]\n')
-      print('[Disconnected]')
-      print self.socket.error()
+      self.pythonConsole.append('[Disconnected]\n\n')
+
 #
 # WebSocketLogic
 #
